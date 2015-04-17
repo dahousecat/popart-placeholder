@@ -74,11 +74,16 @@ function create_image($width, $height, $bg_color, $txt_color, $path) {
 
   $noise_tile = rand(0, 4) == 1;
 
+  if($noise_tile) {
+    $frequency = rand(1, 6);
+  }
+
   while($tile_x <= $width) {
     while($tile_y <= $height) {
       if($noise_tile) {
-        $draw = rand(0, 1) == 0;
+        $draw = rand(0, $frequency) == 0;
       }
+
       if($draw) {
         $x2 = $tile_x + $tile_size;
         $y2 = $tile_y + $tile_size;
@@ -117,3 +122,4 @@ function create_image($width, $height, $bg_color, $txt_color, $path) {
 //Ok thank you. Bye
 //
 ?>
+
