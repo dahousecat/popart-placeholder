@@ -1,4 +1,0 @@
-Host chimchim
-	HostName chimchim.monkiipreview.com
-	User ubuntu
-	IdentityFile ~/.ssh/monkii-multi-keypair.pem
