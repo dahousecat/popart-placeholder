@@ -1,0 +1,14 @@
+# Ignore .vagrant and .idea folders
+.idea
+.idea/*
+.vagrant
+.DS_Store
+.sass-cache
+.map
+website/html/node_modules
+offline_content
+node_modules
+*~
+.settings
+.buildpath
+.project
