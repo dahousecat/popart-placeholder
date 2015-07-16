@@ -1,0 +1,38 @@
+#!/bin/bash
+
+cl() {
+	BLUE='\033[1;34m'
+	RED='\033[0;31m'
+	GREEN='\033[0;32m'
+	if [[ $* == *-e* ]]; then # e is for error
+		COLOUR=$RED
+	elif [[ $* == *-s* ]]; then # s is for sucsess
+		COLOUR=$GREEN
+	else
+		COLOUR=$BLUE
+	fi
+	NC='\033[0m' # No Color
+	echo -e "${COLOUR}$1${NC}"
+}
+
+function emptydb {
+#  echo "DROP DATABASE IF EXISTS devdb" | mysql
+#  echo "CREATE DATABASE devdb" | mysql
+#  echo "GRANT ALL ON devdb.* TO 'devdb'@'localhost'" | mysql
+#  echo "FLUSH PRIVILEGES" | mysql
+
+  mysqldump --add-drop-table "${DB[name]}" | grep "DROP TABLE" | mysql "${DB[name]}"
+
+  cl ""${DB[name]}" is now empty"
+}
+
+# Are you sure?
+read -r -p $'\e[36m'"This will delete every table in the "${DB[name]}" database. Are you sure you want to continue? [y/N] "$'\e[0m' response
+case $response in
+    [yY][eE][sS]|[yY])
+        emptydb
+        ;;
+    *)
+        exit
+        ;;
+esac

@@ -1,23 +1,18 @@
 <?php
 
-if (isset($_GET)) {
-  $size_arr = explode('x', $_GET['id']);
+if (isset($_GET['size'])) {
+  $size_arr = explode('x', $_GET['size']);
   if (!is_array($size_arr) || count($size_arr) != 2) {
-    die("Error. It should be like - placeholder/350x150");
+    die("Error. It should be like - placeholder?size=600x600");
   }
 
-  //$path = '/var/www/apw.local/image_placeholder_php/images/img-' . $size_arr[0] . 'x' . $size_arr[1] . '.png';
+  $path = '/tmp/img.jpg';
 
   global $debug;
   $debug = FALSE;
 
-  if(!$debug) {
-    header("Content-Type: image/png");
-  }
-
-
   //if(!file_exists($path)) {
-    create_image($size_arr[0], $size_arr[1]);
+  create_image($size_arr[0], $size_arr[1], $path);
   //}
 
   //Tell the browser what kind of file is come in
@@ -26,18 +21,30 @@ if (isset($_GET)) {
 
   exit;
 
+} else {
+  //die("Error. It should be like - placeholder?size=600x600");
 }
 
 //Function that has all the magic
-function create_image($width, $height, $path = null) {
+function create_image($width, $height, $path = null, $colours = null, $layers = null) {
 
   global $debug;
+  global $image_data;
+  $image_data = array();
+
+  // Double it and then half it in a basic attempt at antialiasing
+  $width = $width * 2;
+  $height = $height * 2;
 
   //Create the image resource
   $image = imagecreatetruecolor($width, $height);
+  $imageOut = imagecreatetruecolor($width / 2, $height / 2);
+
+  //imageantialias($image, TRUE);
 
   // Allocate colours
   $colours = get_colour_set();
+
   foreach($colours as $name => $colour) {
     if($name == 'base') {
       $alpha = 0;
@@ -46,55 +53,57 @@ function create_image($width, $height, $path = null) {
     }
     $colours[$name]['allocated'] = imagecolorallocatealpha($image, $colour['r'], $colour['g'], $colour['b'], $alpha);
     $colours[$name]['inverted']['allocated'] = ImageColorAllocate($image, $colour['inverted']['r'], $colour['inverted']['g'], $colour['inverted']['b']);
+
+    $image_data['colours'][$name] = array($colour['r'], $colour['g'], $colour['b'], $alpha);
   }
 
   //Fill the background color
   ImageFill($image, 0, 0, $colours['base']['allocated']);
 
-  $layer1 = rand(0, 2);
-  $layer2 = rand(0, 2);
-  $layer3 = rand(0, 2);
+  $num_layers = rand(2,4);
+  $layer_types = array('checkerboard_layer', 'circles_layer', 'stripes_layer');
 
-  // Checkerboard layer
-  if($layer1 == 1) {
-    checkerboard_layer($image, $width, $height, $colours['colour1']['allocated'], null, null);
-  }
-  if($layer1 == 2) {
-    circles_layer($image, $width, $height, $colours['colour1']['allocated'], null, null, null);
+  for($layer=1; $layer<=$num_layers; $layer++) {
+    $function = $layer_types[rand(0,2)];
+    $function($image, $width, $height, $colours['colour' . $layer]['allocated']);
   }
 
-  if($layer2 == 1) {
-    checkerboard_layer($image, $width, $height, $colours['colour2']['allocated'], null, null);
-  }
-  if($layer2 == 2) {
-    circles_layer($image, $width, $height, $colours['colour2']['allocated'], null, null, null);
-  }
-
-  if($layer3 == 1) {
-    checkerboard_layer($image, $width, $height, $colours['colour3']['allocated'], null, null);
-  }
-  if($layer3 == 2) {
-    circles_layer($image, $width, $height, $colours['colour3']['allocated'], null, null, null);
-  }
-
-
-
-
+  imagecopyresampled($imageOut, $image, 0, 0, 0, 0, $width/2, $height/2, $width, $height);
 
   //Text layer
   //text_layer($image, $width, $height, $colours['base']['inverted']['allocated']);
 
   //Output the newly created image in png format
   if(!$debug) {
+
+    header("Content-Type: image/jpeg");
+
     if($path) {
-      imagepng($image, $path);
+      imagejpeg($imageOut, $path);
+
+      embed_metadata($image_data, $path);
+
+      readfile($path);
+
     } else {
-      imagepng($image);
+
+      imagejpeg($imageOut);
     }
   }
 
   //Free up resources
   ImageDestroy($image);
+  ImageDestroy($imageOut);
+}
+
+function embed_metadata($data, $path) {
+
+  include(dirname(__FILE__) . '/iptc.php');
+
+  $objIPTC = new IPTC($path);
+  $objIPTC->setValue(IPTC_HEADLINE, "A computer generated picture");
+  $objIPTC->setValue(IPTC_CAPTION, "All made by random numbers");
+  $objIPTC->setValue(IPTC_SPECIAL_INSTRUCTIONS, json_encode($data));
 }
 
 function text_layer(&$image, $width, $height, $colour, $text = null) {
@@ -113,6 +122,10 @@ function text_layer(&$image, $width, $height, $colour, $text = null) {
 }
 
 function stripes_layer(&$image, $width, $height, $colour, $thickness = null, $spacing = null, $angle = null) {
+
+  global $debug;
+  global $image_data;
+
   if(is_null($thickness)) {
     $thickness = rand(2, $width/8);
   }
@@ -123,12 +136,56 @@ function stripes_layer(&$image, $width, $height, $colour, $thickness = null, $sp
     $angle = rand(0, 7) * 45;
   }
 
-  $distance = 0;
-  $max_distance = sqrt(($width * $width) + ($height * $height));
+  $image_data['layers'][] = array(
+    'type' => 'stripes_layer',
+    'thickness' => $thickness,
+    'spacing' => $spacing,
+    'angle' => $angle,
+  );
 
-  while($distance < $max_distance) {
-    //imagelinethick($image);
+  $lines = array();
+  $y = -$height;
+
+  $originX = $width / 2;
+  $originY = $height / 2;
+
+  while($y < $height *2) {
+
+    $point1 = array(
+      'x' => -$width,
+      'y' => $y,
+    );
+    $point2 = array(
+      'x' => $width * 2,
+      'y' => $y,
+    );
+
+    if($angle != 0) {
+      $point1 = rotate_point($point1['x'], $point1['y'], $originX, $originY, $angle);
+      $point2 = rotate_point($point2['x'], $point2['y'], $originX, $originY, $angle);
+    }
+
+    $lines[] = array(
+      'x1' => $point1['x'],
+      'y1' => $point1['y'],
+      'x2' => $point2['x'],
+      'y2' => $point2['y'],
+    );
+    $y += $spacing + $thickness;
   }
+
+  foreach($lines as $line) {
+    imagelinethick($image, $line['x1'], $line['y1'], $line['x2'], $line['y2'], $colour, $thickness);
+  }
+
+}
+
+function rotate_point($pointX, $pointY, $originX, $originY, $angle) {
+  $angle = $angle * pi() / 180.0;
+  return array(
+    'x' => cos($angle) * ($pointX-$originX) - sin($angle) * ($pointY-$originY) + $originX,
+    'y' => sin($angle) * ($pointX-$originX) + cos($angle) * ($pointY-$originY) + $originY,
+  );
 }
 
 function imagelinethick(&$image, $x1, $y1, $x2, $y2, $color, $thick = 1) {
@@ -156,6 +213,9 @@ function imagelinethick(&$image, $x1, $y1, $x2, $y2, $color, $thick = 1) {
 }
 
 function circles_layer(&$image, $width, $height, $colour, $size = null, $spacing = null, $noise = null) {
+
+  global $image_data;
+
   if(is_null($size)) {
     $size = rand(2, $width/4);
   }
@@ -165,9 +225,18 @@ function circles_layer(&$image, $width, $height, $colour, $size = null, $spacing
   if(is_null($noise)) {
     $noise = rand(0, 4) == 0;
   }
+  $frequency = '';
   if($noise) {
     $frequency = rand(1, 6);
   }
+
+  $image_data['layers'][] = array(
+    'type' => 'circles_layer',
+    'size' => $size,
+    'spacing' => $spacing,
+    'noise' => $noise,
+    'frequency' => $frequency,
+  );
 
   $tile_x = $tile_y = 0;
   $draw = TRUE;
@@ -202,6 +271,8 @@ function circles_layer(&$image, $width, $height, $colour, $size = null, $spacing
 
 function checkerboard_layer(&$image, $width, $height, $colour, $tile_size = null, $noise = null) {
 
+  global $image_data;
+
   if(is_null($tile_size)) {
     $tile_size = rand(2, $width/4);
   }
@@ -210,9 +281,17 @@ function checkerboard_layer(&$image, $width, $height, $colour, $tile_size = null
     $noise = rand(0, 4) == 1;
   }
 
+  $frequency = '';
   if($noise) {
     $frequency = rand(1, 6);
   }
+
+  $image_data['layers'][] = array(
+    'type' => 'checkerboard_layer',
+    'tile_size' => $tile_size,
+    'noise' => $noise,
+    'frequency' => $frequency,
+  );
 
   $tile_x = $tile_y = 0;
   $draw = TRUE;
@@ -264,7 +343,8 @@ function get_colour_set() {
 
   $colours['colour1'] = adjust_hue($colours['base'], '50');
   $colours['colour2'] = adjust_hue($colours['base'], '-50');
-  $colours['colour3'] = adjust_hue($colours['base'], '-100');
+  $colours['colour3'] = adjust_hue($colours['base'], '-75');
+  $colours['colour4'] = adjust_hue($colours['base'], '-100');
 
   $base_style = 'padding: 24px 0px; width: 200px; text-align: center;';
 
@@ -519,4 +599,24 @@ function hslToRgb(&$colour){
   $colour['g'] = $g;
   $colour['b'] = $b;
 
+}
+
+function pdie() {
+  $args = func_get_args();
+  $style = 'style="background:#EEEEEE;padding:10px;margin:10px;border:1px solid #999999;"';
+  $die = TRUE;
+  foreach($args as $arg) {
+    if($arg!=='return') {
+      if(is_bool($arg) || is_int($arg)) {
+        echo "<pre $style>".PHP_EOL;
+        var_dump($arg);
+        echo PHP_EOL.'</pre>';
+      } else {
+        echo "<pre $style>".PHP_EOL.print_r($arg, TRUE).PHP_EOL.'</pre>';
+      }
+    } else {
+      $die = FALSE;
+    }
+  }
+  if($die) die();
 }

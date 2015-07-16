@@ -1,0 +1,59 @@
+#!/bin/bash
+
+cl() {
+	BLUE='\033[1;34m'
+	RED='\033[0;31m'
+	GREEN='\033[0;32m'
+	if [[ $* == *-e* ]]; then # e is for error
+		COLOUR=$RED
+	elif [[ $* == *-s* ]]; then # s is for sucsess
+		COLOUR=$GREEN
+	else 
+		COLOUR=$BLUE
+	fi
+	NC='\033[0m' # No Color
+	echo -e "${COLOUR}$1${NC}"
+}
+
+. "/vagrant/setup/load-variables.sh"
+
+
+# Make sure DB exists
+RESULT="`mysqlshow ${DB[name]}| grep -v Wildcard | grep -o ${DB[name]}`"
+if [ "$RESULT" != "${DB[name]}" ]; then
+    cl "Error: This script expects a database called ${DB[name]} but that does not exist." -e
+    exit
+fi
+
+# Find most recent dump
+MOST_RECENT=`find "${DB[dump_dir]}" -type f -printf '%T@ %p\n' | sort -n | tail -1 | cut -f2- -d" "`
+
+# Make sure there is a dump to import
+if [ ${#MOST_RECENT} == 0 ]; then
+  cl "No dumps for this project have been created yet." -e
+  exit
+fi
+
+FILE_NAME=${MOST_RECENT##*/}
+
+importdb() {
+	zcat $1 | mysql devdb
+	cl "$2 imported sucsesfully" -s
+}
+
+if [[ $* == *-y* ]]; then # check for y flag
+  importdb $MOST_RECENT $FILE_NAME
+else
+
+  # Are you sure?
+  read -r -p $'\e[36m'"This will import $FILE_NAME over the top of your database. Are you sure? [y/N] "$'\e[0m' response
+  case $response in
+      [yY][eE][sS]|[yY])
+          importdb $MOST_RECENT $FILE_NAME
+          ;;
+      *)
+          exit
+          ;;
+  esac
+
+fi
