@@ -20,7 +20,7 @@ class Colours {
       ],
     ];
 
-    $colours['base']['hex'] = rgb2hex($colours['base']);
+    $colours['base']['hex'] = $this->rgb2hex($colours['base']);
 
     $colours['colour1'] = $this->adjustHue($colours['base'], '50');
     $colours['colour2'] = $this->adjustHue($colours['base'], '-50');
