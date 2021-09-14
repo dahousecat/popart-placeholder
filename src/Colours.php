@@ -76,7 +76,7 @@ class Colours {
     $inverted['g'] = 255 - $colour['g'];
     $inverted['b'] = 255 - $colour['b'];
 
-    $inverted['hex'] = rgb2hex($inverted);
+    $inverted['hex'] = $this->rgb2hex($inverted);
 
     return $inverted;
   }
