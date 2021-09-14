@@ -85,9 +85,9 @@ class Colours {
     $hex = "#";
 
     // Make sure each RGB value is within 0 - 255
-    $colour['r'] = within_255($colour['r']);
-    $colour['g'] = within_255($colour['g']);
-    $colour['b'] = within_255($colour['b']);
+    $colour['r'] = $this->within255($colour['r']);
+    $colour['g'] = $this->within255($colour['g']);
+    $colour['b'] = $this->within255($colour['b']);
 
     $hex .= str_pad(dechex($colour['r']), 2, "0", STR_PAD_LEFT);
     $hex .= str_pad(dechex($colour['g']), 2, "0", STR_PAD_LEFT);
