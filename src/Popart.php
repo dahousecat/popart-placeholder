@@ -2,7 +2,6 @@
 
 namespace Popart;
 
-//use IPTC;
 use iBudasov\Iptc\Manager;
 use iBudasov\Iptc\Domain\Tag;
 
@@ -18,9 +17,11 @@ class Popart {
 
   protected $imageData = [];
 
+  protected $scalingFactor = 4;
+
   public function __construct(int $width, int $height, string $path) {
-    $this->width  = $width * 2;
-    $this->height = $height * 2;
+    $this->width  = $width * $this->scalingFactor;
+    $this->height = $height * $this->scalingFactor;
     $this->path = $path;
   }
 
@@ -31,7 +32,7 @@ class Popart {
   public function create() {
 
     $image    = imagecreatetruecolor($this->width, $this->height);
-    $imageOut = imagecreatetruecolor($this->width / 2, $this->height / 2);
+    $imageOut = imagecreatetruecolor($this->width / $this->scalingFactor, $this->height / $this->scalingFactor);
 
     $colours = new Colours($this->debug);
     $colourSet = $colours->getColourSet();
@@ -67,7 +68,7 @@ class Popart {
 
     }
 
-    imagecopyresampled($imageOut, $image, 0, 0, 0, 0, $this->width / 2, $this->height / 2, $this->width, $this->height);
+    imagecopyresampled($imageOut, $image, 0, 0, 0, 0, $this->width / $this->scalingFactor, $this->height / $this->scalingFactor, $this->width, $this->height);
 
     //Output the newly created image in png format
     if (!$this->debug) {
