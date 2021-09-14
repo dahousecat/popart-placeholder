@@ -1,0 +1,14 @@
+{
+  "name": "dahousecat/popartplaceholder",
+  "description": "Generate popup placeholder images with php",
+  "type": "project",
+  "minimum-stability": "dev",
+  "autoload": {
+    "psr-4": {
+      "Popart\\": "src/"
+    }
+  },
+  "require": {
+    "ibudasov/php7-iptc-manager": "dev-master"
+  }
+}

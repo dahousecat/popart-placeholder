@@ -1,5 +1,9 @@
 <?php
 
+$loader = require __DIR__ . '/vendor/autoload.php';
+
+use Popart\Popart;
+
 if (isset($_GET['size'])) {
   $size_arr = explode('x', $_GET['size']);
   if (!is_array($size_arr) || count($size_arr) != 2) {
@@ -11,13 +15,16 @@ if (isset($_GET['size'])) {
   global $debug;
   $debug = FALSE;
 
+  $popart = new Popart($size_arr[0], $size_arr[1], $path);
+  $popart->create();
+
   //if(!file_exists($path)) {
-  create_image($size_arr[0], $size_arr[1], $path);
+  //  create_image($size_arr[0], $size_arr[1], $path);
   //}
 
   //Tell the browser what kind of file is come in
 
-//  readfile($path);
+  //  readfile($path);
 
   exit;
 
@@ -510,9 +517,9 @@ function rgbToHsl(&$colour) {
   $g = $colour['g'];
   $b = $colour['b'];
 
-//  $r /= 255;
-//  $g /= 255;
-//  $b /= 255;
+  //  $r /= 255;
+  //  $g /= 255;
+  //  $b /= 255;
 
   $max = max( $r, $g, $b );
   $min = min( $r, $g, $b );
