@@ -20,8 +20,6 @@ if (isset($_GET['size'])) {
   $popart = new Popart($size_arr[0], $size_arr[1], $path);
   $popart->create();
 
-  exit;
-
+} else {
+  die("Error. It should be like - placeholder?size=600x600");
 }
-
-die("Error. It should be like - placeholder?size=600x600");
